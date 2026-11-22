@@ -37,7 +37,7 @@ Password : <blank> (don't put anything)
 - Modern browsers are not excluded and should be happy to use this front-end too with slightly more features but the main aspect you may want it is for performance & its minimalistic approach. Here you won't load megabytes of stuff and executing plenty of javascript for fancy animations and UI stuff & front frameworks.
 
 ## What is the minimal configuration
-Your browser need to support LocalStorage and ES3 JavaScript. Expect early-2000 browsers to work which covers well the native browsers from the Windows XP/PowerPC Macs era.
+Your browser need ES3 JavaScript and either LocalStorage or cookies to remember settings. Settings are mirrored into cookies, so they also persist on browsers that do not keep LocalStorage (common on TV browsers over HTTP). Expect early-2000 browsers to work which covers well the native browsers from the Windows XP/PowerPC Macs era.
 
 Don't expect to get a good experience with streaming even by lowering quality directly from the browser from a 20 years old machine, there's high chances streaming will not work if your browser is too old even if you choose to use the mp4 container ; and using the Flash plug-in often lead to pretty bad performance. Here, JellyDinosaur expect you to download the file or "Copy the stream link" to an adequate application (PowerVLC/XBMC/KODI/VLC/mPlayer) that will do the playback with the best possible performance & reliably.
 
@@ -59,7 +59,7 @@ Those browsers are modern enough so you can stream directly m3u8 h.264 transcode
 # What can't run on very old browsers
 - Download bar will be missing before Firefox 6/IE10, though the textual percentage should work & update itself
 - Transcoded mp4 download will be unavailable and require ~2010-2011 browsers because xhr.responseType = "blob", URL.createObjectURL are unavailable
-- The browser will not save/remember any of your settings over different sessions when local storage is missing. LocalStorage is supported since Chrome 4 (2009), Firefox 3.5 (2009), Opera 10.5 (2010), Safari 4 (2009) on major desktop browsers.
+- The browser will not save/remember any of your settings over different sessions when both cookies and local storage are unavailable. Cookies work over plain HTTP and in very old browsers; LocalStorage is supported since Chrome 4 (2009), Firefox 3.5 (2009), Opera 10.5 (2010), Safari 4 (2009) on major desktop browsers.
 - Some very old browsers are very annoying about cross-domain, so you will need to host JellyDinosaur on the same domain (if you own the JellyFin server) or use the reverse proxy that I provide from a modern computer on your LAN
 - Browser need to be JavaScript ES3 (1999) compliant. JellyDinosaur was designed with interactivity so JavaScript ES3 must be available and enabled browser-side.
 

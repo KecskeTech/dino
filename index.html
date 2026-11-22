@@ -45,7 +45,11 @@
          visuel malgré des centres de boîte proches. On aligne les trois éléments de la ligne
          (libellé, slider, affichage du temps) sur la même référence "middle". */
       .v-mid { vertical-align: middle; }
-      input[type="text"], input[type="password"], select, textarea { font-family: inherit; font-size: 0.95em; color: #e7ecf1; background: #0f1419; border: 1px solid #3a4654; border-radius: 4px; padding: 5px 7px; }
+      input[type="text"], input[type="password"], textarea { font-family: inherit; font-size: 0.95em; color: #e7ecf1; background: #0f1419; border: 1px solid #3a4654; border-radius: 4px; padding: 5px 7px; }
+      /* Liste deroulante claire, texte sombre : sur les anciens navigateurs de TV, les options
+         heritent sinon la couleur claire du <select> et restent blanches sur fond blanc. */
+      select { font-family: inherit; font-size: 0.95em; color: #14181d; background: #eef2f6; border: 1px solid #3a4654; border-radius: 4px; padding: 5px 7px; }
+      select option { color: #14181d; background: #ffffff; }
       input[type="text"]:focus, input[type="password"]:focus, select:focus, textarea:focus { border-color: #e0aa4b; }
       button { font-family: inherit; font-size: 0.95em; color: #eef2f6; background: #2c3743; border: 1px solid #3d4a58; border-radius: 5px; padding: 7px 14px; margin: 3px 4px 3px 0; cursor: pointer; }
       button:hover { background: #374453; border-color: #516273; }
@@ -902,35 +906,92 @@
             document.documentElement.lang = currentLang;
         }
 
-        function saveLang(lang) {
+        // localStorage peut etre absent, vide ou non persistant d'une session a l'autre (observe
+        // sur certains navigateurs de TV, surtout en HTTP). Les cookies servent de repli : ils
+        // fonctionnent en HTTP, sont compris par les navigateurs anciens et survivent a la fermeture.
+        // Chaque ecriture alimente les deux stockages, chaque lecture essaie le cookie puis
+        // localStorage. Les valeurs sont encodees : un cookie ne peut pas contenir ; , = ni espace brut.
+        var STORAGE_COOKIE_PATH = "/";
+
+        function readStorageCookie(name) {
             try {
-                localStorage.setItem(LANG_KEY, lang);
+                var cookies = document.cookie ? document.cookie.split(";") : [];
+                for (var i = 0; i < cookies.length; i++) {
+                    var item = cookies[i];
+                    var eq = item.indexOf("=");
+                    if (eq < 0) {
+                        continue;
+                    }
+                    var key = item.substring(0, eq);
+                    while (key.charAt(0) === " ") {
+                        key = key.substring(1);
+                    }
+                    if (key === name) {
+                        return decodeURIComponent(item.substring(eq + 1));
+                    }
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        function writeStorageCookie(name, value) {
+            var expires = new Date();
+            expires.setTime(expires.getTime() + 365 * 24 * 60 * 60 * 1000);
+            document.cookie = name + "=" + encodeURIComponent(String(value)) +
+                "; expires=" + expires.toUTCString() + "; path=" + STORAGE_COOKIE_PATH;
+        }
+
+        function removeStorageCookie(name) {
+            document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=" + STORAGE_COOKIE_PATH;
+        }
+
+        function storageGet(key) {
+            var value = readStorageCookie(key);
+            if (value === null) {
+                try {
+                    value = localStorage.getItem(key);
+                } catch (e) {
+                    value = null;
+                }
+            }
+            return value;
+        }
+
+        function storageSet(key, value) {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {}
+            try {
+                writeStorageCookie(key, value);
             } catch (e) {}
         }
 
-        function loadLang() {
+        function storageRemove(key) {
             try {
-                return localStorage.getItem(LANG_KEY);
-            } catch (e) {
-                return null;
-            }
+                localStorage.removeItem(key);
+            } catch (e) {}
+            try {
+                removeStorageCookie(key);
+            } catch (e) {}
+        }
+
+        function saveLang(lang) {
+            storageSet(LANG_KEY, lang);
+        }
+
+        function loadLang() {
+            return storageGet(LANG_KEY);
         }
 
         // Mémorisation de la dernière adresse de serveur validée, pour ne pas repartir du placeholder
         var SERVER_URL_KEY = "jellyDinosaurServerUrl";
 
         function saveServerUrl(url) {
-            try {
-                localStorage.setItem(SERVER_URL_KEY, url);
-            } catch (e) {}
+            storageSet(SERVER_URL_KEY, url);
         }
 
         function loadServerUrl() {
-            try {
-                return localStorage.getItem(SERVER_URL_KEY);
-            } catch (e) {
-                return null;
-            }
+            return storageGet(SERVER_URL_KEY);
         }
 
         // Item actuellement joignable (l'Id à utiliser pour PlaybackInfo/Stream) :
@@ -975,29 +1036,28 @@
         // uniquement à savoir s'il faut proposer l'entrée "TV en direct" (0 = pas de tuner).
         var liveTvChannelCount = 0;
 
-        // Mémorisation de la navigation dans localStorage, pour survivre à un rafraîchissement de page
+        // Mémorisation de la navigation (cookie + localStorage), pour survivre à un rafraîchissement
+        // de page ou à la fermeture du navigateur.
         var NAV_STATE_KEY = "jellyDinosaurNavState";
         // Mémorisation des préférences de lecture (résolution/bitrate), indépendamment de la navigation
         var PLAYBACK_PREFS_KEY = "jellyDinosaurPlaybackPrefs";
 
         function savePlaybackPrefs() {
-            try {
-                localStorage.setItem(PLAYBACK_PREFS_KEY, JSON.stringify({
-                    res: document.getElementById("resSelect").value,
-                    bitrate: document.getElementById("bitrateSelect").value,
-                    audioBitrate: document.getElementById("audioBitrateSelect").value,
-                    level: document.getElementById("levelSelect").value,
-                    profile: document.getElementById("profileSelect").value,
-                    maxVideoBitDepth: document.getElementById("maxVideoBitDepthSelect").value,
-                    maxRefFrames: document.getElementById("maxRefFramesSelect").value,
-                    maxFramerate: document.getElementById("maxFramerateSelect").value
-                }));
-            } catch (e) {}
+            storageSet(PLAYBACK_PREFS_KEY, JSON.stringify({
+                res: document.getElementById("resSelect").value,
+                bitrate: document.getElementById("bitrateSelect").value,
+                audioBitrate: document.getElementById("audioBitrateSelect").value,
+                level: document.getElementById("levelSelect").value,
+                profile: document.getElementById("profileSelect").value,
+                maxVideoBitDepth: document.getElementById("maxVideoBitDepthSelect").value,
+                maxRefFrames: document.getElementById("maxRefFramesSelect").value,
+                maxFramerate: document.getElementById("maxFramerateSelect").value
+            }));
         }
 
         function restorePlaybackPrefs() {
             try {
-                var raw = localStorage.getItem(PLAYBACK_PREFS_KEY);
+                var raw = storageGet(PLAYBACK_PREFS_KEY);
                 if (!raw) {
                     return;
                 }
@@ -1188,14 +1248,12 @@
         }
 
         function saveState(state) {
-            try {
-                localStorage.setItem(NAV_STATE_KEY, JSON.stringify(state));
-            } catch (e) {}
+            storageSet(NAV_STATE_KEY, JSON.stringify(state));
         }
 
         function loadState() {
             try {
-                var raw = localStorage.getItem(NAV_STATE_KEY);
+                var raw = storageGet(NAV_STATE_KEY);
                 return raw ? JSON.parse(raw) : null;
             } catch (e) {
                 return null;
@@ -1209,9 +1267,7 @@
         }
 
         function clearState() {
-            try {
-                localStorage.removeItem(NAV_STATE_KEY);
-            } catch (e) {}
+            storageRemove(NAV_STATE_KEY);
         }
 
         // Mémorisation optionnelle des identifiants (via cases à cocher), indépendamment de l'état de navigation
@@ -1219,34 +1275,30 @@
         var SAVED_CREDENTIALS_KEY = "jellyDinosaurSavedCredentials";
 
         function saveOrForgetApiKey(remember, value) {
-            try {
-                if (remember) {
-                    localStorage.setItem(SAVED_API_KEY_KEY, value);
-                } else {
-                    localStorage.removeItem(SAVED_API_KEY_KEY);
-                }
-            } catch (e) {}
+            if (remember) {
+                storageSet(SAVED_API_KEY_KEY, value);
+            } else {
+                storageRemove(SAVED_API_KEY_KEY);
+            }
         }
 
         function saveOrForgetCredentials(remember, username, password) {
-            try {
-                if (remember) {
-                    localStorage.setItem(SAVED_CREDENTIALS_KEY, JSON.stringify({ username: username, password: password }));
-                } else {
-                    localStorage.removeItem(SAVED_CREDENTIALS_KEY);
-                }
-            } catch (e) {}
+            if (remember) {
+                storageSet(SAVED_CREDENTIALS_KEY, JSON.stringify({ username: username, password: password }));
+            } else {
+                storageRemove(SAVED_CREDENTIALS_KEY);
+            }
         }
 
         function restoreSavedCredentials() {
             try {
-                var savedApiKey = localStorage.getItem(SAVED_API_KEY_KEY);
+                var savedApiKey = storageGet(SAVED_API_KEY_KEY);
                 if (savedApiKey) {
                     document.getElementById("apiKey").value = savedApiKey;
                     document.getElementById("rememberApiKey").checked = true;
                 }
 
-                var rawCredentials = localStorage.getItem(SAVED_CREDENTIALS_KEY);
+                var rawCredentials = storageGet(SAVED_CREDENTIALS_KEY);
                 if (rawCredentials) {
                     var credentials = JSON.parse(rawCredentials);
                     document.getElementById("username").value = credentials.username || "";
@@ -1257,10 +1309,8 @@
         }
 
         function clearSavedCredentials() {
-            try {
-                localStorage.removeItem(SAVED_API_KEY_KEY);
-                localStorage.removeItem(SAVED_CREDENTIALS_KEY);
-            } catch (e) {}
+            storageRemove(SAVED_API_KEY_KEY);
+            storageRemove(SAVED_CREDENTIALS_KEY);
 
             document.getElementById("apiKey").value = "";
             document.getElementById("rememberApiKey").checked = false;
@@ -3988,6 +4038,7 @@
             currentLang = "fr";
             saveLang("fr");
             applyTranslations();
+            restorePlaybackPrefs();
             showConfigStep("serverStep");
         };
 
@@ -3995,6 +4046,7 @@
             currentLang = "en";
             saveLang("en");
             applyTranslations();
+            restorePlaybackPrefs();
             showConfigStep("serverStep");
         };
 
