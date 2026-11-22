@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JellyDinosaur storage test</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; margin: 0 auto; padding: 18px; max-width: 760px; background: #12161b; color: #e7ecf1; font-size: 16px; line-height: 1.45; }
+      h1 { color: #f0c05a; font-size: 1.6em; margin: 0 0 4px 0; }
+      h2 { color: #f0c05a; font-size: 1.15em; margin: 22px 0 6px 0; }
+      p { margin: 6px 0; }
+      .box { background: #1a2027; border: 1px solid #2f3944; border-radius: 6px; padding: 14px; margin: 12px 0; }
+      .ok { color: #91e3a8; font-weight: bold; }
+      .bad { color: #ff9c9c; font-weight: bold; }
+      .wait { color: #f0c05a; font-weight: bold; }
+      .mono { font-family: monospace; word-wrap: break-word; }
+      button { font-family: inherit; font-size: 1em; color: #eef2f6; background: #2c3743; border: 1px solid #3d4a58; border-radius: 5px; padding: 8px 14px; margin: 4px 6px 4px 0; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>JellyDinosaur storage test</h1>
+    <p>Open this page with the TV browser: <b>http://kecske.win/dino/cookie-test.html</b></p>
+
+    <div class="box">
+        <h2>Results</h2>
+        <p id="cookieLine">Cookie: checking...</p>
+        <p id="sessionLine">Browser session: checking...</p>
+        <p id="verdictLine">Verdict: checking...</p>
+        <p id="storageLine">localStorage: checking...</p>
+        <p id="enabledLine">navigator.cookieEnabled: checking...</p>
+    </div>
+
+    <div class="box">
+        <h2>How to test</h2>
+        <p>1. Load this page once. It writes a cookie with a one-year expiry.</p>
+        <p>2. Press Reload. The cookie should still be readable.</p>
+        <p>3. Close the TV browser completely, open it again, and load this page again.</p>
+        <p>If the cookie is still found after reopening, cookies persist. If it is missing, the browser blocks or clears cookies.</p>
+        <button id="reloadBtn">Reload</button>
+        <button id="clearBtn">Clear test data</button>
+    </div>
+
+    <div class="box">
+        <h2>Raw values</h2>
+        <p class="mono" id="rawCookie">document.cookie: checking...</p>
+        <p class="mono" id="rawStorage">localStorage: checking...</p>
+        <p class="mono" id="ua">user agent: checking...</p>
+    </div>
+
+    <script>
+        var PERSIST_COOKIE = "jd_cookie_persist";
+        var SESSION_COOKIE = "jd_cookie_session";
+        var LS_KEY = "jd_localstorage_persist";
+        var COOKIE_PATH = "/dino/";
+
+        function readCookie(name) {
+            var cookies = document.cookie ? document.cookie.split(";") : [];
+            for (var i = 0; i < cookies.length; i++) {
+                var item = cookies[i];
+                var eq = item.indexOf("=");
+                if (eq < 0) {
+                    continue;
+                }
+                var key = item.substring(0, eq);
+                while (key.charAt(0) === " ") {
+                    key = key.substring(1);
+                }
+                if (key === name) {
+                    return decodeURIComponent(item.substring(eq + 1));
+                }
+            }
+            return null;
+        }
+
+        function setCookie(name, value, days) {
+            var cookie = name + "=" + encodeURIComponent(value) + "; path=" + COOKIE_PATH;
+            if (days) {
+                var expires = new Date();
+                expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+                cookie += "; expires=" + expires.toUTCString();
+            }
+            document.cookie = cookie;
+        }
+
+        function deleteCookie(name) {
+            document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=" + COOKIE_PATH;
+        }
+
+        function setText(id, text) {
+            var el = document.getElementById(id);
+            if (el) {
+                el.innerHTML = "";
+                el.appendChild(document.createTextNode(text));
+            }
+        }
+
+        function setStatus(id, prefix, text, className) {
+            var el = document.getElementById(id);
+            if (!el) {
+                return;
+            }
+            el.innerHTML = "";
+            el.appendChild(document.createTextNode(prefix + " "));
+            var span = document.createElement("span");
+            span.className = className;
+            span.appendChild(document.createTextNode(text));
+            el.appendChild(span);
+        }
+
+        function loadStorageValue() {
+            try {
+                return localStorage.getItem(LS_KEY);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function saveStorageValue(value) {
+            try {
+                localStorage.setItem(LS_KEY, value);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        var cookieBefore = readCookie(PERSIST_COOKIE);
+        var sameSession = readCookie(SESSION_COOKIE) !== null;
+        var storageBefore = loadStorageValue();
+        var cookieCount = cookieBefore ? parseInt(cookieBefore, 10) || 1 : 0;
+        var storageCount = storageBefore ? parseInt(storageBefore, 10) || 1 : 0;
+
+        setCookie(PERSIST_COOKIE, String(cookieCount + 1), 365);
+        setCookie(SESSION_COOKIE, "1");
+        var storageWorks = saveStorageValue(String(storageCount + 1));
+
+        if (cookieBefore === null) {
+            setStatus("cookieLine", "Cookie:", "NOT READ ON LOAD (written now)", "bad");
+        } else {
+            setStatus("cookieLine", "Cookie:", "READ OK, previous value " + cookieBefore, "ok");
+        }
+
+        setStatus("sessionLine", "Browser session:", sameSession ? "same session (session cookie present)" : "new session (session cookie absent)", sameSession ? "wait" : "ok");
+
+        if (cookieBefore !== null && !sameSession) {
+            setStatus("verdictLine", "Verdict:", "PASS - cookie survived a browser restart", "ok");
+        } else if (cookieBefore === null && sameSession) {
+            setStatus("verdictLine", "Verdict:", "FAIL - cookie missing during same session", "bad");
+        } else if (cookieBefore !== null) {
+            setStatus("verdictLine", "Verdict:", "cookie works in this session; close and reopen the browser to test persistence", "wait");
+        } else {
+            setStatus("verdictLine", "Verdict:", "cookie was missing; reload, then close and reopen the browser", "wait");
+        }
+
+        if (storageBefore !== null && !sameSession) {
+            setStatus("storageLine", "localStorage:", "PASS - value survived a browser restart", "ok");
+        } else if (storageBefore !== null) {
+            setStatus("storageLine", "localStorage:", "READ OK, previous value " + storageBefore, "ok");
+        } else if (storageWorks) {
+            setStatus("storageLine", "localStorage:", "NOT READ ON LOAD (written now)", "wait");
+        } else {
+            setStatus("storageLine", "localStorage:", "UNAVAILABLE", "bad");
+        }
+
+        setStatus("enabledLine", "navigator.cookieEnabled:", navigator.cookieEnabled ? "true" : "false", navigator.cookieEnabled ? "ok" : "bad");
+        setText("rawCookie", "document.cookie: " + (document.cookie || "(empty)"));
+        setText("rawStorage", "localStorage: " + (storageBefore === null ? "(empty)" : storageBefore));
+        setText("ua", "user agent: " + navigator.userAgent);
+
+        document.getElementById("reloadBtn").onclick = function() {
+            location.reload();
+        };
+
+        document.getElementById("clearBtn").onclick = function() {
+            deleteCookie(PERSIST_COOKIE);
+            deleteCookie(SESSION_COOKIE);
+            try {
+                localStorage.removeItem(LS_KEY);
+            } catch (e) {}
+            location.reload();
+        };
+    </script>
+</body>
+</html>
