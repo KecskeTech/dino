@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
     paths:
+      - "index.html"
+      - "hls.min.js"
+      - "jellydinosaur-flash-player.swf"
+      - "build-minify.js"
       - "docs/**"
       - "Dockerfile"
       - "deploy/nginx.conf"
