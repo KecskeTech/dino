@@ -8,29 +8,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JellyDinosaur</title>
     <style>
-      body { font-family: sans-serif; margin: 20px; }
-      .section { border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
+      /* Theme en CSS2/CSS3 ancien uniquement : couleurs, bordures, rayons et ombres
+         optionnelles. Aucun flexbox/grid, aucune police telechargee, aucune image
+         supplementaire : le rendu reste correct sur Firefox 3.5/IE8 et les navigateurs
+         de TV, et rien de plus n'est telecharge. */
+      html { background: #12161b; }
+      body { font-family: "Segoe UI", Arial, Helvetica, sans-serif; margin: 0 auto; padding: 18px; max-width: 1100px; background: #12161b; color: #e7ecf1; font-size: 15px; line-height: 1.45; }
+      h1 { color: #f0c05a; font-size: 1.9em; letter-spacing: 0.5px; margin: 0 0 2px 0; }
+      h3, h4, h5, h6 { color: #f0c05a; }
+      .section { background: #1a2027; border: 1px solid #2f3944; border-radius: 7px; padding: 15px; margin-bottom: 18px; -webkit-box-shadow: 0 2px 8px rgba(0,0,0,0.25); -moz-box-shadow: 0 2px 8px rgba(0,0,0,0.25); box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+      .section .section { background: #151a20; border-color: #2a333d; border-radius: 5px; padding: 12px; margin-bottom: 12px; -webkit-box-shadow: none; -moz-box-shadow: none; box-shadow: none; }
+      .section h3 { margin-top: 0; padding-bottom: 6px; border-bottom: 1px solid #2f3944; }
       .hidden { display: none; }
       /* CSS Grid (display:grid) n'existe dans aucun navigateur avant ~2014-2017, bien après le
          plancher vise par ce projet (tout navigateur supportant localStorage, ex. Firefox 3.5) :
-         deux colonnes obtenues ici par flottement, compatible IE8+/Firefox 3.5+. Pas de
-         :nth-child() (CSS3, absent d'IE8) pour retirer la marge de la colonne de droite : le
-         padding-right (avec box-sizing:border-box, supporte sans prefixe des IE8) sert d'espace
-         entre colonnes plutot qu'une marge, evitant ce probleme. */
-      .grid-container { margin-bottom: 20px; overflow: hidden; }
-      .grid-container .item-entry { float: left; width: 50%; padding-right: 10px; margin: 0 0 5px 0; -moz-box-sizing: border-box; box-sizing: border-box; }
-      .item-entry { cursor: pointer; color: blue; text-decoration: underline; margin: 5px 0; }
-      .category-title { font-weight: bold; font-size: 1.2em; margin-top: 10px; }
-      .app-version { margin: -12px 0 20px 0; }
-      .error-message { color: red; font-weight: bold; border: 1px solid red; padding: 10px; margin-bottom: 20px; }
-      table { border-collapse: collapse; margin: 5px 0; }
-      td { padding: 2px 12px 2px 0; }
+         les colonnes restent obtenues par flottement, compatible IE8+/Firefox 3.5+. Pas de
+         :nth-child() (CSS3, absent d'IE8) : chaque entree porte sa propre bordure, ce qui separe
+         les colonnes sans marge a retirer sur la derniere. */
+      .grid-container { margin-bottom: 16px; overflow: hidden; border-top: 1px solid #2a333d; }
+      .grid-container .item-entry { float: left; width: 50%; padding: 8px 12px; margin: 0; border: 0; border-bottom: 1px solid #2a333d; border-left: 3px solid transparent; border-radius: 0; background: transparent; color: #d8c3f2; text-decoration: none; -moz-box-sizing: border-box; box-sizing: border-box; }
+      .grid-container .item-entry:hover { background: #232c36; border-left-color: #e0aa4b; color: #ffffff; }
+      .item-entry { cursor: pointer; color: #d8c3f2; text-decoration: none; margin: 5px 0; padding: 6px 10px; border: 1px solid #2f3944; border-left: 3px solid #3a4654; border-radius: 4px; background: #202832; }
+      .item-entry:hover { background: #29333f; border-left-color: #e0aa4b; color: #ffffff; }
+      #categoryChoice .item-entry { display: inline-block; margin: 8px 8px 2px 0; padding: 9px 16px; background: #242e39; border: 1px solid #374453; border-left: 3px solid #e0aa4b; border-radius: 5px; }
+      #categoryChoice .item-entry:hover { background: #2d3a47; }
+      #channelList .item-entry { margin: 0 0 6px 0; }
+      .category-title { font-weight: bold; font-size: 1.2em; color: #f0c05a; margin: 12px 0 6px 0; }
+      .app-version { margin: 0 0 18px 0; color: #7f8c99; font-size: 0.78em; letter-spacing: 1px; text-transform: uppercase; }
+      .app-version i { font-style: normal; }
+      .error-message { color: #ffd9d9; font-weight: bold; background: #3a1d1d; border: 1px solid #b55454; border-left: 4px solid #e05d5d; border-radius: 5px; padding: 10px 12px; margin-bottom: 18px; }
+      table { border-collapse: collapse; margin: 6px 0; }
+      td { padding: 5px 14px 5px 0; border-bottom: 1px solid #262f38; vertical-align: top; }
       img { max-width: 100%; height: auto; }
       /* vertical-align:middle sur le slider seul ne suffit pas : les <span> voisins restent alignés
          sur leur baseline par défaut (référence différente de "middle"), d'où un léger décalage
          visuel malgré des centres de boîte proches. On aligne les trois éléments de la ligne
          (libellé, slider, affichage du temps) sur la même référence "middle". */
       .v-mid { vertical-align: middle; }
+      input[type="text"], input[type="password"], select, textarea { font-family: inherit; font-size: 0.95em; color: #e7ecf1; background: #0f1419; border: 1px solid #3a4654; border-radius: 4px; padding: 5px 7px; }
+      input[type="text"]:focus, input[type="password"]:focus, select:focus, textarea:focus { border-color: #e0aa4b; }
+      button { font-family: inherit; font-size: 0.95em; color: #eef2f6; background: #2c3743; border: 1px solid #3d4a58; border-radius: 5px; padding: 7px 14px; margin: 3px 4px 3px 0; cursor: pointer; }
+      button:hover { background: #374453; border-color: #516273; }
+      button:active { background: #232c36; }
+      button:disabled { color: #7f8c99; background: #232a32; border-color: #313b45; cursor: default; }
+      #btnValidateServer, #btnLoadLibrary, #btnLogin, #btnChannelsNext, #btnRetry { color: #241a05; font-weight: bold; background: #e0aa4b; border-color: #f0c05a; }
+      #btnValidateServer:hover, #btnLoadLibrary:hover, #btnLogin:hover, #btnChannelsNext:hover, #btnRetry:hover { background: #f0c05a; border-color: #ffd98c; }
+      a { color: #cbb3ef; }
+      a:hover { color: #ffffff; }
+      #channelPager { margin: 10px 0 2px 0; }
+      #detailContent { overflow: hidden; }
+      #detailContent img { float: right; max-width: 38%; max-height: 320px; height: auto; margin: 0 0 12px 18px; padding: 3px; background: #0f1419; border: 1px solid #3a4654; border-radius: 6px; }
+      #detailContent div { margin: 3px 0; }
+      #liveStatus { color: #f0c05a; margin: 0 0 10px 0; }
+      #downloadProgress { margin-top: 8px; }
+      @media only screen and (min-width: 1000px) {
+        .grid-container .item-entry { width: 33.333%; }
+      }
 
       /* Les media queries sont comprises par les navigateurs mobiles vises et par Firefox 3.5.
          Un navigateur plus ancien qui ne les comprend pas conserve simplement la presentation
