@@ -24,6 +24,17 @@ Login : demo
 
 Password : <blank> (don't put anything)
 
+## Docker / TrueNAS
+
+A small nginx image is built from `docs/` on every push to `main` and published to
+`ghcr.io/kecsketech/dino:latest`. On TrueNAS, use `deploy/docker-compose.yml`; Watchtower pulls
+the new image within five minutes. The container serves the app at `/dino/` on port `8088`, e.g.
+`http://<truenas-ip>:8088/dino/`.
+
+Plain HTTP is intentional: it keeps old TV browsers without modern TLS working. Do not expose
+that port directly to the internet. A diagnostic page is available at `/dino/cookie-test.html`
+to check whether the TV browser keeps cookies and LocalStorage across restarts.
+
 ## Tech stack
 - Pure HTML/ES3 JS (index.html)
 - (Optional) A flash AS3 app for streaming. I already compiled this program as an swf in the repo so you don't have to mess with the Flex SDK if you don't intend to modify it.
